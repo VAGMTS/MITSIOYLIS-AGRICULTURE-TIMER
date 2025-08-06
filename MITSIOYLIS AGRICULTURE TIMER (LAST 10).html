@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="el">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MITSIOYLIS AGRICULTURE TIMER</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #eef7ef;
+      text-align: center;
+      padding: 10px;
+      margin: 0;
+    }
+    h1 {
+      color: #2e7d32;
+      font-size: 6vw;
+      margin-bottom: 20px;
+    }
+    .button {
+      padding: 4vw 6vw;
+      margin: 2vw;
+      font-size: 4vw;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .green { background-color: green; color: white; }
+    .red { background-color: red; color: white; }
+    .gray { background-color: gray; color: white; }
+    .nav-btn {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .hidden {
+      display: none;
+    }
+    .bold-red {
+      color: red;
+      font-weight: bold;
+    }
+    input[type="number"] {
+      font-size: 4vw;
+      padding: 1vw;
+      margin: 1vw;
+      width: 60vw;
+      max-width: 300px;
+    }
+    #display {
+      font-size: 6vw;
+    }
+    #results, #manualResults {
+      font-size: 4vw;
+    }
+    h2, h3, label {
+      font-size: 4.5vw;
+    }
+    ul#history {
+      padding: 0;
+      list-style-type: none;
+    }
+    ul#history li {
+      font-size: 4vw;
+      margin: 1vw 0;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>MITSIOYLIS AGRICULTURE TIMER</h1>
+
+  <button class="button nav-btn" onclick="showPage('timer')">Χρονόμετρο</button>
+  <button class="button nav-btn" onclick="showPage('manual')">Χειροκίνητος Υπολογισμός</button>
+
+  <div id="timerPage">
+    <h2 id="display">0.00</h2>
+    <button class="button green" onclick="startTimer()">Έναρξη</button>
+    <button class="button red" onclick="stopTimer()">Λήξη</button><br>
+    <button class="button gray" onclick="resetTimer()">Επαναφορά</button>
+    <br><br>
+    <label>Απόσταση (σε μέτρα): </label>
+    <input type="number" id="distance" placeholder="π.χ. 174">
+    <div id="results"></div>
+    <h3>Ιστορικό Μετρήσεων</h3>
+    <ul id="history"></ul>
+  </div>
+
+  <div id="manualPage" class="hidden">
+    <label>Ταχύτητα (λεπτά:δευτερόλεπτα ανά μέτρο): </label><br>
+    <input type="number" id="manualMinutes" placeholder="Λεπτά" min="0">
+    <input type="number" id="manualSeconds" placeholder="Δευτερόλεπτα" min="0" max="59">
+    <br><br>
+    <label>Απόσταση (σε μέτρα): </label><br>
+    <input type="number" id="manualDistance" placeholder="π.χ. 174">
+    <br><br>
+    <button class="button green" onclick="calculateManual()">Υπολογισμός</button>
+    <div id="manualResults"></div>
+  </div>
+
+  <script>
+    let startTime, interval;
+
+    function showPage(page) {
+      document.getElementById('timerPage').classList.add('hidden');
+      document.getElementById('manualPage').classList.add('hidden');
+      document.getElementById(page + 'Page').classList.remove('hidden');
+    }
+
+    function startTimer() {
+      startTime = Date.now();
+      interval = setInterval(updateDisplay, 10);
+    }
+
+    function updateDisplay() {
+      let elapsed = (Date.now() - startTime) / 1000;
+      document.getElementById("display").innerText = formatTime(elapsed);
+    }
+
+    function formatTime(seconds) {
+      const min = Math.floor(seconds / 60);
+      const sec = Math.floor(seconds % 60);
+      const ms = Math.floor((seconds % 1) * 100);
+      return `${min}:${sec.toString().padStart(2, '0')}:${ms.toString().padStart(2, '0')}`;
+    }
+
+    function stopTimer() {
+      clearInterval(interval);
+      let elapsed = (Date.now() - startTime) / 1000;
+      document.getElementById("display").innerText = formatTime(elapsed);
+
+      let distance = parseFloat(document.getElementById("distance").value);
+      if (!distance || elapsed <= 0) return;
+
+      let timePerMeter = (elapsed / 0.5) / 60;
+      let totalTime = timePerMeter * distance;
+
+      let timePerMeterMin = Math.floor(timePerMeter);
+      let timePerMeterSec = Math.round((timePerMeter - timePerMeterMin) * 60);
+      let hours = Math.floor(totalTime / 60);
+      let minutes = Math.round(totalTime % 60);
+
+      let currentTime = new Date();
+      currentTime.setMinutes(currentTime.getMinutes() + Math.round(totalTime));
+      let arrivalTime = currentTime.toTimeString().slice(0, 5);
+
+      let resultHTML = `<p>Χρόνος ανά μέτρο: ${timePerMeterMin}:${timePerMeterSec.toString().padStart(2, '0')} λεπτά</p>` +
+        `<p>Συνολικός χρόνος μέχρι τον προορισμό: ${hours}:${minutes.toString().padStart(2, '0')} Ώρες</p>` +
+        `<p class="bold-red">Εκτιμώμενη Ώρα Άφιξης: ${arrivalTime}</p>`;
+
+      document.getElementById("results").innerHTML = resultHTML;
+
+      let historyEntry = document.createElement("li");
+      historyEntry.innerHTML = resultHTML;
+      document.getElementById("history").appendChild(historyEntry);
+    }
+
+    function resetTimer() {
+      clearInterval(interval);
+      document.getElementById("display").innerText = "0.00";
+      document.getElementById("results").innerHTML = "";
+    }
+
+    function calculateManual() {
+      let min = parseInt(document.getElementById("manualMinutes").value) || 0;
+      let sec = parseInt(document.getElementById("manualSeconds").value) || 0;
+      let distance = parseFloat(document.getElementById("manualDistance").value);
+
+      if (!distance || (min === 0 && sec === 0)) return;
+
+      let totalPerMeter = min + sec / 60;
+      let totalTime = totalPerMeter * distance;
+      let hours = Math.floor(totalTime / 60);
+      let minutes = Math.round(totalTime % 60);
+
+      let currentTime = new Date();
+      currentTime.setMinutes(currentTime.getMinutes() + Math.round(totalTime));
+      let arrivalTime = currentTime.toTimeString().slice(0, 5);
+
+      document.getElementById("manualResults").innerHTML =
+        `<p>Χρόνος μέχρι τον προορισμό: ${hours}:${minutes.toString().padStart(2, '0')} ώρες</p>` +
+        `<p class="bold-red">Εκτιμώμενη Ώρα Άφιξης: ${arrivalTime}</p>`;
+    }
+  </script>
+</body>
+
+</html>
